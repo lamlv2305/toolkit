@@ -1,4 +1,4 @@
-package rok
+package slice
 
 func ChunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
 	for chunkSize < len(items) {
