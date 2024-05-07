@@ -33,7 +33,7 @@ func New(options ...func(*LogOption)) zerolog.Logger {
 	logger := zerolog.New(wr).With().Caller().Timestamp().Logger()
 
 	if opt.Pretty {
-		logger = logger.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+		logger = logger.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC1123})
 	}
 
 	return logger
