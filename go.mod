@@ -2,7 +2,10 @@ module github.com/lamlv2305/rok
 
 go 1.22.0
 
-require github.com/rs/zerolog v1.32.0
+require (
+	github.com/jackc/pgx/v5 v5.6.0
+	github.com/rs/zerolog v1.32.0
+)
 
 require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
