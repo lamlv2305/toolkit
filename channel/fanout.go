@@ -4,24 +4,35 @@ import (
 	"github.com/google/uuid"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/rs/zerolog/log"
+	"sync"
 )
 
-func NewFanout[T any]() Fanout[T] {
-	return Fanout[T]{
-		data: cmap.New[*SingleData[T]](),
+func NewFanout[T any](params ...WithOptions[T]) Fanout[T] {
+	opts := options[T]{}
+	for idx := range params {
+		params[idx](&opts)
 	}
-}
 
-func NewFanoutWithMiddleware[T any](middlewares ...func(T)) Fanout[T] {
-	return Fanout[T]{
-		data:        cmap.New[*SingleData[T]](),
-		middlewares: middlewares,
+	ins := Fanout[T]{
+		data:    cmap.New[*SingleData[T]](),
+		options: opts,
 	}
+
+	if opts.relay > 0 {
+		ins.relay = &RelaySlice{
+			mu:   &sync.RWMutex{},
+			data: nil,
+			size: opts.relay,
+		}
+	}
+
+	return ins
 }
 
 type Fanout[T any] struct {
-	data        cmap.ConcurrentMap[string, *SingleData[T]]
-	middlewares []func(T)
+	data    cmap.ConcurrentMap[string, *SingleData[T]]
+	relay   *RelaySlice
+	options options[T]
 }
 
 type SingleData[T any] struct {
@@ -39,9 +50,20 @@ func (f *Fanout[T]) Send(sendingData T) {
 		}
 	}()
 
-	for idx := range f.middlewares {
-		// side effect
-		go f.middlewares[idx](sendingData)
+	for idx := range f.options.sideEffect {
+		// show something like log here
+		go f.options.sideEffect[idx](sendingData)
+	}
+
+	for idx := range f.options.middlewares {
+		if !f.options.middlewares[idx](sendingData) {
+			// filter data
+			return
+		}
+	}
+
+	if f.relay != nil {
+		go f.relay.Add(sendingData)
 	}
 
 	for m := range f.data.IterBuffered() {
@@ -69,6 +91,22 @@ func (f *Fanout[T]) Wait(buffer int, ignore func(T) bool) (chan T, func()) {
 		closed: false,
 		ignore: ignore,
 	})
+
+	go func() {
+		// sending relay data
+		if f.relay == nil {
+			return
+		}
+
+		relayedData := f.relay.Get()
+		for idx := range relayedData {
+			if ignore != nil && ignore(relayedData[idx].(T)) {
+				continue
+			}
+
+			ch <- relayedData[idx].(T)
+		}
+	}()
 
 	return ch, func() {
 		f.data.RemoveCb(id, func(key string, v *SingleData[T], exists bool) bool {
