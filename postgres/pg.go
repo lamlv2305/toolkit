@@ -5,14 +5,11 @@ import (
 	"time"
 )
 
-type Postgres struct {
+func Now() pgtype.Timestamp {
+	return Timestamp(time.Now())
 }
 
-func (p Postgres) Now() pgtype.Timestamp {
-	return p.Timestamp(time.Now())
-}
-
-func (p Postgres) Timestamp(t time.Time) pgtype.Timestamp {
+func Timestamp(t time.Time) pgtype.Timestamp {
 	return pgtype.Timestamp{
 		Time:             t,
 		InfinityModifier: 0,
