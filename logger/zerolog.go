@@ -2,21 +2,23 @@ package logger
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"time"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/diode"
 	"github.com/rs/zerolog/pkgerrors"
-	"os"
-	"time"
 )
 
-func Setup(debug bool) {
+func Setup(logLevel zerolog.Level) {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if debug {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
+		return filepath.Base(file) + ":" + strconv.Itoa(line)
 	}
+	zerolog.SetGlobalLevel(logLevel)
 }
 
 func New(options ...func(*LogOption)) zerolog.Logger {

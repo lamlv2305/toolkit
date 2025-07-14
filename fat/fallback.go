@@ -1,6 +1,8 @@
-package rok
+package fat
 
 import "errors"
+
+var ErrBreakFallback = errors.New("break fallback")
 
 func Fallback[T any](args ...func() (*T, error)) (*T, error) {
 	if len(args) == 0 {
@@ -12,6 +14,10 @@ func Fallback[T any](args ...func() (*T, error)) (*T, error) {
 
 	for idx := range rest {
 		result, err := rest[idx]()
+
+		if errors.Is(err, ErrBreakFallback) {
+			return nil, ErrBreakFallback
+		}
 
 		if err == nil && result != nil {
 			return result, nil
